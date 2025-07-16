@@ -3,7 +3,7 @@
 }
 
 :443 {
-	tls internal
+	tls /etc/caddy/cert.pem /etc/caddy/key.pem
 
 	handle /ws* {
 		reverse_proxy websocket-server:3000

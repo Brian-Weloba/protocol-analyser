@@ -13,6 +13,8 @@ services:
     volumes:
       - ./caddy/Caddyfile:/etc/caddy/Caddyfile
       - ./frontend/public:/var/www/html # Serves the frontend UI
+      - ./cert.pem:/etc/caddy/cert.pem   # Add this
+      - ./key.pem:/etc/caddy/key.pem # Add this
       - caddy_data:/data
     depends_on:
       - websocket-server
