@@ -1,20 +1,18 @@
 {
-	# Enable automatic local HTTPS with self-signed certificates
-	local_certs
+	# Optional global settings like logging or email can go here
 }
 
 :443 {
-	# Route WebSocket traffic
+	tls internal
+
 	handle /ws* {
 		reverse_proxy websocket-server:3000
 	}
 
-	# Route WebTransport traffic
 	handle /webtransport* {
 		reverse_proxy webtransport-server:8000
 	}
 
-	# Serve the static frontend files
 	handle {
 		root * /var/www/html
 		file_server

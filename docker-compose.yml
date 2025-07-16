@@ -3,11 +3,13 @@ version: '3.8'
 services:
   # 1. Caddy Proxy: Handles HTTPS, HTTP/3, and proxies to WebSocket/WebTransport servers
   caddy:
-    image: caddy:2.7-alpine
+    image: caddy:latest
     container_name: caddy_proxy
+    security_opt:
+      - "apparmor=unconfined"
     ports:
-      - "8443:443" # Standard HTTPS port for WS and WebTransport
-      - "8443:443/udp" # Required for HTTP/3
+      - "443:443" # Standard HTTPS port for WS and WebTransport
+      - "443:443/udp" # Required for HTTP/3
     volumes:
       - ./caddy/Caddyfile:/etc/caddy/Caddyfile
       - ./frontend/public:/var/www/html # Serves the frontend UI
