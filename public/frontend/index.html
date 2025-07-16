@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Web Protocol Performance Analyzer</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/grpc-web@1.5.0/dist/grpc-web.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #111827; color: #f3f4f6; }
+        .metric-card { background-color: #1f2937; border: 1px solid #374151; border-radius: 0.75rem; padding: 1.5rem; }
+        .btn:hover { transform: translateY(-2px); box-shadow: 0 0 20px rgba(59, 130, 246, 0.5); }
+        .log-panel { height: 250px; background-color: #0d1117; border: 1px solid #374151; font-family: 'Courier New', Courier, monospace; font-size: 0.875rem; padding: 1rem; overflow-y: scroll; border-radius: 0.5rem; }
+    </style>
+</head>
+<body class="p-4 sm:p-6 md:p-8">
+    <div class="max-w-7xl mx-auto">
+        <header class="text-center mb-8">
+            <h1 class="text-3xl sm:text-4xl font-bold text-white tracking-tight">Web Protocol Performance Analyzer</h1>
+        </header>
+
+        <div class="metric-card mb-8">
+            <h2 class="text-2xl font-semibold mb-4 text-white">Test Configuration</h2>
+            <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+                <div>
+                    <label for="protocol-select" class="block text-sm font-medium text-gray-300">Protocol</label>
+                    <select id="protocol-select" class="mt-1 block w-full bg-gray-700 border-gray-600 text-white rounded-md shadow-sm">
+                        <option value="ws">WebSocket</option>
+                        <option value="webtransport">WebTransport</option>
+                        <option value="grpc">gRPC-Web</option>
+                    </select>
+                </div>
+                <div>
+                    <label for="concurrent-users" class="block text-sm font-medium text-gray-300">Concurrent Users</label>
+                    <input type="number" id="concurrent-users" value="10" class="mt-1 block w-full bg-gray-700 border-gray-600 text-white rounded-md">
+                </div>
+                <div>
+                    <label for="message-interval" class="block text-sm font-medium text-gray-300">Message Interval (ms)</label>
+                    <input type="number" id="message-interval" value="1000" class="mt-1 block w-full bg-gray-700 border-gray-600 text-white rounded-md">
+                </div>
+                <div class="flex items-end space-x-2">
+                    <button id="start-test" class="w-full btn bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-md">Start Test</button>
+                    <button id="stop-test" class="w-full btn bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-md" disabled>Stop Test</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+            <div class="metric-card"><h3 class="text-xl font-semibold mb-2">Action Latency (RTT)</h3><canvas id="rtt-chart"></canvas><p class="mt-4 text-center text-gray-400">P95: <span id="p95-rtt">N/A</span> ms</p></div>
+            <div class="metric-card"><h3 class="text-xl font-semibold mb-2">Message Rate</h3><canvas id="msg-rate-chart"></canvas><p class="mt-4 text-center text-gray-400">Sent: <span id="msg-sent">0</span> | Recv: <span id="msg-received">0</span></p></div>
+            <div class="metric-card"><h3 class="text-xl font-semibold mb-2">Connections</h3><canvas id="connections-chart"></canvas><p class="mt-4 text-center text-gray-400">Active: <span id="active-connections">0</span> | Errors: <span id="connection-errors">0</span></p></div>
+        </div>
+
+        <div><h2 class="text-2xl font-semibold mb-4">Event Log</h2><div id="log-panel" class="log-panel"></div></div>
+        <footer class="text-center mt-8 text-gray-500">
+            <p>Access extended metrics via <a href="http://localhost:9090" target="_blank" class="text-blue-400 hover:underline">Prometheus</a> and <a href="http://localhost:3001" target="_blank" class="text-blue-400 hover:underline">Grafana</a> (admin/admin).</p>
+            <p class="text-xs mt-2">Note: For WebTransport/WebSocket, you may need to accept a self-signed certificate warning in your browser on first load.</p>
+        </footer>
+    </div>
+
+    <script type="module">
+        // --- gRPC Generated Code (Simplified for Demo) ---
+        const { GameServiceClient, ChatMessage } = (() => {
+            const proto = { game: {} };
+            class ProtoMessage { constructor(arr) { this.array = arr || []; } }
+            proto.game.PingRequest = class extends ProtoMessage { getTimestamp() { return this.array[1]; } setTimestamp(v) { this.array[1] = v; } };
+            proto.game.PingResponse = class extends ProtoMessage { getTimestamp() { return this.array[1]; } };
+            proto.game.ChatMessage = class extends ProtoMessage { getTimestamp() { return this.array[1]; } setTimestamp(v) { this.array[1] = v; } getPayload() { return this.array[2]; } setPayload(v) { this.array[2] = v; } };
+
+            class GameServiceClient {
+                constructor(hostname, creds, options) { this.client_ = new grpc.web.GrpcWebClientBase(options); this.hostname_ = hostname; }
+                ping(req, meta, cb) { return this.client_.rpcCall(`${this.hostname_}/game.GameService/Ping`, req, meta || {}, { request: proto.game.PingRequest, response: proto.game.PingResponse }, (e, r) => cb(e, r)); }
+                gameChat(meta) { return this.client_.serverStreaming(`${this.hostname_}/game.GameService/GameChat`, new proto.game.ChatMessage(), meta || {}, { request: proto.game.ChatMessage, response: proto.game.ChatMessage }); }
+            }
+            return { GameServiceClient, ChatMessage: proto.game.ChatMessage };
+        })();
+
+        // --- DOM & State ---
+        const startBtn = document.getElementById('start-test'), stopBtn = document.getElementById('stop-test'), logPanel = document.getElementById('log-panel');
+        let testState = { isRunning: false, clients: [], messageIntervalId: null, metrics: { rtt: [], sent: 0, received: 0, errors: 0, active: 0 }};
+
+        // --- Charting & Logging ---
+        const createChart = (ctx, label) => new Chart(ctx, { type: 'line', data: { labels: [], datasets: [{ label, data: [], borderColor: 'rgba(59, 130, 246, 1)', borderWidth: 2, tension: 0.4 }] }, options: { scales: { y: { beginAtZero: true, ticks: { color: '#9ca3af' } }, x: { ticks: { color: '#9ca3af' } } }, plugins: { legend: { labels: { color: '#d1d5db' } } } } });
+        const rttChart = createChart(document.getElementById('rtt-chart').getContext('2d'), 'Avg RTT (ms)'), msgRateChart = createChart(document.getElementById('msg-rate-chart').getContext('2d'), 'Messages/sec'), connectionsChart = createChart(document.getElementById('connections-chart').getContext('2d'), 'Active Connections');
+        const log = (msg, type = 'info') => {
+            const colors = { info: 'text-gray-400', success: 'text-green-400', error: 'text-red-400', warn: 'text-yellow-400' };
+            logPanel.innerHTML += `<p class="${colors[type]}">[${new Date().toLocaleTimeString()}] ${msg}</p>`;
+            logPanel.scrollTop = logPanel.scrollHeight;
+        };
+
+        // --- Test Logic ---
+        const startTest = () => {
+            if (testState.isRunning) return;
+            testState.isRunning = true;
+            startBtn.disabled = true; stopBtn.disabled = false;
+            const concurrentUsers = parseInt(document.getElementById('concurrent-users').value);
+            const protocol = document.getElementById('protocol-select').value;
+            log(`Starting test: ${concurrentUsers} users on ${protocol}`, 'warn');
+            for (let i = 0; i < concurrentUsers; i++) createClient(protocol, i);
+            const interval = parseInt(document.getElementById('message-interval').value);
+            testState.messageIntervalId = setInterval(broadcastMessages, interval);
+            testState.metricsUpdaterId = setInterval(updateMetricsDashboard, 1000);
+        };
+
+        const stopTest = () => {
+            if (!testState.isRunning) return;
+            testState.isRunning = false;
+            startBtn.disabled = false; stopBtn.disabled = true;
+            log('Stopping test...', 'warn');
+            clearInterval(testState.messageIntervalId);
+            clearInterval(testState.metricsUpdaterId);
+            testState.clients.forEach(client => client.close());
+            testState.clients = [];
+            setTimeout(() => {
+                testState.metrics = { rtt: [], sent: 0, received: 0, errors: 0, active: 0 };
+                [rttChart, msgRateChart, connectionsChart].forEach(c => { c.data.labels = []; c.data.datasets[0].data = []; c.update(); });
+                updateMetricsDashboard();
+            }, 1000);
+        };
+
+        const createClient = async (protocol, id) => {
+            const clientIdentifier = `[${protocol.toUpperCase()} ${id}]`;
+            try {
+                if (protocol === 'ws') {
+                    const ws = new WebSocket(`wss://${window.location.host}/ws`);
+                    ws.onopen = () => { log(`${clientIdentifier} Connected`, 'success'); testState.clients.push({ id, protocol, instance: ws, close: () => ws.close() }); };
+                    ws.onmessage = (e) => { const d = JSON.parse(e.data); if (d.type === 'pong') testState.metrics.rtt.push(Date.now() - d.timestamp); testState.metrics.received++; };
+                    ws.onerror = () => { log(`${clientIdentifier} Error`, 'error'); testState.metrics.errors++; };
+                    ws.onclose = () => { log(`${clientIdentifier} Closed`); testState.clients = testState.clients.filter(c => c.id !== id); };
+                } else if (protocol === 'webtransport') {
+                    const transport = new WebTransport(`https://localhost/webtransport`);
+                    await transport.ready;
+                    log(`${clientIdentifier} Connected`, 'success');
+                    testState.clients.push({ id, protocol, instance: transport, close: () => transport.close() });
+                    readFromWebTransport(transport, id);
+                } else if (protocol === 'grpc') {
+                    const client = new GameServiceClient(`http://${window.location.hostname}:8085`);
+                    const stream = client.gameChat({});
+                    log(`${clientIdentifier} Stream opened`, 'success');
+                    testState.clients.push({ id, protocol, instance: client, stream, close: () => stream.cancel() });
+                    stream.on('data', (res) => { testState.metrics.received++; testState.metrics.rtt.push(Date.now() - res.getTimestamp()); });
+                    stream.on('status', (s) => { if (s.code !== 0) { log(`${clientIdentifier} Status: ${s.details}`, 'error'); testState.metrics.errors++; } });
+                    stream.on('end', () => { log(`${clientIdentifier} Stream ended`); testState.clients = testState.clients.filter(c => c.id !== id); });
+                }
+            } catch (err) {
+                log(`${clientIdentifier} Connection failed: ${err.message}`, 'error');
+                testState.metrics.errors++;
+            }
+        };
+
+        const readFromWebTransport = async (transport, id) => {
+            try {
+                const reader = transport.incomingUnidirectionalStreams.getReader();
+                while (true) {
+                    const { value, done } = await reader.read();
+                    if (done) break;
+                    const streamReader = value.getReader();
+                    const { value: chunk } = await streamReader.read();
+                    const data = JSON.parse(new TextDecoder().decode(chunk));
+                    if (data.type === 'pong') testState.metrics.rtt.push(Date.now() - data.timestamp);
+                    testState.metrics.received++;
+                }
+            } catch(e) { log(`[WT ${id}] Read error: ${e.message}`, 'error'); }
+        };
+        
+        const broadcastMessages = async () => {
+            const payload = 'test-data-'.repeat(2);
+            for (const client of testState.clients) {
+                const message = { type: 'ping', timestamp: Date.now(), payload };
+                try {
+                    if (client.protocol === 'ws' && client.instance.readyState === WebSocket.OPEN) { client.instance.send(JSON.stringify(message)); }
+                    else if (client.protocol === 'wt') { const stream = await client.instance.createUnidirectionalStream(); const writer = stream.getWriter(); await writer.write(new TextEncoder().encode(JSON.stringify(message))); await writer.close(); }
+                    else if (client.protocol === 'grpc') { const chatMsg = new ChatMessage(); chatMsg.setTimestamp(message.timestamp); chatMsg.setPayload(message.payload); client.stream.write(chatMsg); }
+                    testState.metrics.sent++;
+                } catch (e) { log(`[${client.protocol.toUpperCase()} ${client.id}] Send error: ${e.message}`, 'error'); }
+            }
+        };
+
+        const updateMetricsDashboard = () => {
+            const { rtt, sent, received, errors } = testState.metrics;
+            const active = testState.clients.length;
+            const avgRtt = rtt.length > 0 ? (rtt.reduce((a, b) => a + b, 0) / rtt.length) : 0;
+            const p95 = rtt.length > 0 ? [...rtt].sort((a,b)=>a-b)[Math.floor(rtt.length * 0.95)] : 0;
+            const updateChart = (chart, data) => { if (chart.data.labels.length > 20) { chart.data.labels.shift(); chart.data.datasets[0].data.shift(); } chart.data.labels.push(new Date().toLocaleTimeString().split(' ')[0]); chart.data.datasets[0].data.push(data); chart.update(); };
+            updateChart(rttChart, avgRtt); updateChart(connectionsChart, active); updateChart(msgRateChart, received - (msgRateChart.data.datasets[0].data.slice(-1)[0] || 0));
+            document.getElementById('p95-rtt').textContent = p95?.toFixed(2) || 'N/A';
+            document.getElementById('msg-sent').textContent = sent; document.getElementById('msg-received').textContent = received;
+            document.getElementById('active-connections').textContent = active; document.getElementById('connection-errors').textContent = errors;
+        };
+
+        startBtn.addEventListener('click', startTest);
+        stopBtn.addEventListener('click', stopTest);
+    </script>
+</body>
+</html>

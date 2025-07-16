@@ -1,0 +1,23 @@
+syntax = "proto3";
+
+package game;
+
+service GameService {
+  // Simple unary call for RTT measurement - not used in this streaming demo
+  rpc Ping(PingRequest) returns (PingResponse) {}
+  // Bidirectional stream for continuous chat/updates
+  rpc GameChat(stream ChatMessage) returns (stream ChatMessage) {}
+}
+
+message PingRequest {
+  int64 timestamp = 1;
+}
+
+message PingResponse {
+  int64 timestamp = 1;
+}
+
+message ChatMessage {
+    int64 timestamp = 1;
+    string payload = 2;
+}

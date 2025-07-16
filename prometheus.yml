@@ -1,0 +1,15 @@
+global:
+  scrape_interval: 10s
+
+scrape_configs:
+  - job_name: 'websocket-server'
+    static_configs:
+      - targets: ['websocket-server:3000']
+
+  - job_name: 'webtransport-server'
+    static_configs:
+      - targets: ['webtransport-server:8000']
+
+  - job_name: 'grpc-server'
+    static_configs:
+      - targets: ['grpc-server:9091'] # Separate port for metrics

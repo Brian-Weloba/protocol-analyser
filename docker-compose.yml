@@ -1,0 +1,74 @@
+version: '3.8'
+
+services:
+  # 1. Caddy Proxy: Handles HTTPS, HTTP/3, and proxies to WebSocket/WebTransport servers
+  caddy:
+    image: caddy:2.7-alpine
+    container_name: caddy_proxy
+    ports:
+      - "8443:443" # Standard HTTPS port for WS and WebTransport
+      - "8443:443/udp" # Required for HTTP/3
+    volumes:
+      - ./caddy/Caddyfile:/etc/caddy/Caddyfile
+      - ./frontend/public:/var/www/html # Serves the frontend UI
+      - caddy_data:/data
+    depends_on:
+      - websocket-server
+      - webtransport-server
+
+  # 2. Envoy Proxy: Handles gRPC-Web to gRPC translation
+  envoy:
+    image: envoyproxy/envoy:v1.28-latest
+    container_name: envoy_proxy
+    ports:
+      - "8085:8085" # Port for gRPC-Web clients
+    volumes:
+      - ./envoy/envoy.yaml:/etc/envoy/envoy.yaml
+    depends_on:
+      - grpc-server
+
+  # 3. WebSocket Server (Bun/Elysia)
+  websocket-server:
+    build: ./websocket-server
+    container_name: websocket_server
+    # No ports exposed directly, Caddy proxies to it
+
+  # 4. WebTransport Server (Go)
+  webtransport-server:
+    build: ./webtransport-server
+    container_name: webtransport_server
+    # No ports exposed directly, Caddy proxies to it
+
+  # 5. gRPC Server (Node.js)
+  grpc-server:
+    build: ./grpc-server
+    container_name: grpc_server
+    # No ports exposed directly, Envoy proxies to it
+
+  # 6. Prometheus for metrics collection
+  prometheus:
+    image: prom/prometheus:v2.45.0
+    container_name: prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+    depends_on:
+      - websocket-server
+      - webtransport-server
+      - grpc-server
+
+  # 7. Grafana for visualization
+  grafana:
+    image: grafana/grafana:9.5.3
+    container_name: grafana
+    ports:
+      - "3001:3000"
+    volumes:
+      - grafana-storage:/var/lib/grafana
+    depends_on:
+      - prometheus
+
+volumes:
+  caddy_data:
+  grafana-storage:
