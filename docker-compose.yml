@@ -25,7 +25,7 @@ services:
     image: envoyproxy/envoy:v1.28-latest
     container_name: envoy_proxy
     ports:
-      - "8085:8085" # Port for gRPC-Web clients
+      - "8080:8080" # Port for gRPC-Web clients
     volumes:
       - ./envoy/envoy.yaml:/etc/envoy/envoy.yaml
     depends_on:

@@ -6,7 +6,7 @@
     <title>Web Protocol Performance Analyzer</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/grpc-web@1.5.0/dist/grpc-web.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/grpc-web@1.5.0"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         body { font-family: 'Inter', sans-serif; background-color: #111827; color: #f3f4f6; }
@@ -136,7 +136,7 @@
                     testState.clients.push({ id, protocol, instance: transport, close: () => transport.close() });
                     readFromWebTransport(transport, id);
                 } else if (protocol === 'grpc') {
-                    const client = new GameServiceClient(`http://${window.location.hostname}:8085`);
+                    const client = new GameServiceClient(`http://${window.location.hostname}:8080`);
                     const stream = client.gameChat({});
                     log(`${clientIdentifier} Stream opened`, 'success');
                     testState.clients.push({ id, protocol, instance: client, stream, close: () => stream.cancel() });

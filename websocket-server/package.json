@@ -5,6 +5,11 @@
     "elysia-prometheus": "^1.0.0",
     "prom-client": "^15.1.0"
   },
-  "devDependencies": { "bun-types": "latest" },
-  "scripts": { "start": "bun src/index.ts" }
+  "devDependencies": {
+    "@types/bun": "^1.2.19",
+    "bun-types": "latest"
+  },
+  "scripts": {
+    "start": "bun src/index.ts"
+  }
 }

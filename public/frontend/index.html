@@ -136,7 +136,7 @@
                     testState.clients.push({ id, protocol, instance: transport, close: () => transport.close() });
                     readFromWebTransport(transport, id);
                 } else if (protocol === 'grpc') {
-                    const client = new GameServiceClient(`http://${window.location.hostname}:8085`);
+                    const client = new GameServiceClient(`http://${window.location.hostname}:8080`);
                     const stream = client.gameChat({});
                     log(`${clientIdentifier} Stream opened`, 'success');
                     testState.clients.push({ id, protocol, instance: client, stream, close: () => stream.cancel() });
